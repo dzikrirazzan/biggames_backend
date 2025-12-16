@@ -121,13 +121,14 @@ async def get_all_fb_orders(
 
 
 @router.put("/fb/orders/{order_id}/status", response_model=FbOrderResponse)
+@router.post("/fb/orders/{order_id}/status", response_model=FbOrderResponse)
 async def update_fb_order_status(
     order_id: UUID,
     status_update: FbOrderStatusUpdate,
     admin_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update F&B order status (admin only)."""
+    """Update F&B order status (admin only). Accepts both PUT and POST methods."""
     fb_order_service = FbOrderService(db)
     order = await fb_order_service.update_order_status(order_id, status_update.status)
     

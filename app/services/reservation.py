@@ -224,6 +224,38 @@ class ReservationService:
         await self.db.refresh(reservation)
         return reservation
     
+    async def cancel_reservation(
+        self,
+        reservation_id: UUID,
+        user_id: UUID,
+    ) -> None:
+        """Cancel a reservation."""
+        reservation = await self.get_reservation_by_id(reservation_id)
+        
+        if not reservation:
+            raise ValueError("Reservation not found")
+        
+        # Check if user owns this reservation or is admin
+        if reservation.user_id != user_id:
+            # Check if user is admin
+            user_query = select(User).where(User.id == user_id)
+            user_result = await self.db.execute(user_query)
+            user = user_result.scalar_one_or_none()
+            if not user or not user.is_admin:
+                raise PermissionError("You don't have permission to cancel this reservation")
+        
+        # Only allow cancellation if not already completed or cancelled
+        if reservation.status in [ReservationStatus.COMPLETED, ReservationStatus.CANCELLED]:
+            raise ValueError(f"Cannot cancel reservation with status: {reservation.status.value}")
+        
+        reservation.status = ReservationStatus.CANCELLED
+        
+        # Also update payment status if exists
+        if reservation.payment:
+            reservation.payment.status = PaymentStatus.CANCELLED
+        
+        await self.db.commit()
+    
     async def _get_addon(self, addon_id: UUID) -> Addon | None:
         """Get addon by ID."""
         query = select(Addon).where(Addon.id == addon_id)

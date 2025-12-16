@@ -42,3 +42,26 @@ async def get_my_reservations(
     """Get current user's reservations."""
     reservation_service = ReservationService(db)
     return await reservation_service.get_user_reservations(current_user.id)
+
+
+@router.post("/{reservation_id}/cancel", status_code=status.HTTP_200_OK)
+async def cancel_reservation(
+    reservation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cancel a reservation."""
+    reservation_service = ReservationService(db)
+    try:
+        await reservation_service.cancel_reservation(reservation_id, current_user.id)
+        return {"message": "Reservation cancelled successfully"}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
