@@ -46,27 +46,36 @@ CREATE EXTENSION IF NOT EXISTS vector;
 3. Kamu akan lihat 3 opsi - **pilih yang sesuai kebutuhan:**
 
 #### 🎯 Untuk DATABASE_URL (Aplikasi FastAPI):
+
 **Pilih: Transaction Pooler** (Port 6543)
+
 ```
 postgresql://postgres.xxxxx:password@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
 ```
-✅ **Kenapa Transaction?** 
+
+✅ **Kenapa Transaction?**
+
 - Cocok untuk web apps dengan banyak request pendek
 - Efficient connection pooling
 - Recommended untuk SQLAlchemy + FastAPI
 
 #### 🎯 Untuk DATABASE_URL_SYNC (Alembic Migrations):
+
 **Pilih: Direct Connection** (Port 5432)
+
 ```
 postgresql://postgres.xxxxx:password@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
 ```
+
 ✅ **Kenapa Direct?**
+
 - Alembic butuh akses penuh untuk schema changes
 - Migrations tidak butuh pooling
 
 ❌ **Jangan pakai Session Pooler** - itu untuk long-lived connections, bukan untuk web apps.
 
 **PENTING:**
+
 - Ganti `[YOUR-PASSWORD]` dengan password yang kamu buat tadi
 - Simpan 2 versi dengan prefix berbeda:
   - **DATABASE_URL** (async untuk app): `postgresql+asyncpg://...pooler.supabase.com:6543/postgres`
@@ -117,6 +126,7 @@ Render sudah baca dari `render.yaml`, tapi kamu harus isi manual:
 ```
 postgresql+asyncpg://postgres.xxxxx:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
 ```
+
 ☝️ **Port 6543** (Transaction Pooler)
 
 2. **DATABASE_URL_SYNC** (Sync - untuk alembic):
@@ -124,6 +134,7 @@ postgresql+asyncpg://postgres.xxxxx:[PASSWORD]@aws-0-ap-southeast-1.pooler.supab
 ```
 postgresql://postgres.xxxxx:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
 ```
+
 ☝️ **Port 5432** (Direct Connection)
 
 3. **JWT_SECRET_KEY**: (Generate otomatis atau buat sendiri)
