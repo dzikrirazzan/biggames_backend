@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.reservation import ReservationResponse, ReservationStatusUpdate
+from app.schemas.reservation import ReservationResponse, ReservationStatusUpdate, ReservationUpdate
 from app.schemas.payment import PaymentResponse, PaymentConfirmRequest
 from app.schemas.fb_order import FbOrderResponse, FbOrderStatusUpdate
 from app.services.reservation import ReservationService
@@ -31,6 +31,33 @@ async def get_all_reservations(
     return await reservation_service.get_all_reservations()
 
 
+@router.put("/reservations/{reservation_id}", response_model=ReservationResponse)
+async def update_reservation(
+    reservation_id: UUID,
+    update_data: ReservationUpdate,
+    admin_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update reservation details (admin only)."""
+    reservation_service = ReservationService(db)
+    try:
+        return await reservation_service.update_reservation(
+            reservation_id,
+            admin_user.id,
+            update_data.model_dump(exclude_unset=True)
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
+
+
 @router.put("/reservations/{reservation_id}/status", response_model=ReservationResponse)
 async def update_reservation_status(
     reservation_id: UUID,
@@ -51,6 +78,47 @@ async def update_reservation_status(
         )
     
     return await reservation_service._reservation_to_response(reservation)
+
+
+@router.post("/reservations/{reservation_id}/cancel", status_code=status.HTTP_200_OK)
+async def cancel_reservation(
+    reservation_id: UUID,
+    admin_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cancel a reservation - change status to CANCELLED (admin only)."""
+    reservation_service = ReservationService(db)
+    try:
+        await reservation_service.cancel_reservation(reservation_id, admin_user.id, force=True)
+        return {"message": "Reservation cancelled successfully"}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
+
+
+@router.delete("/reservations/{reservation_id}", status_code=status.HTTP_200_OK)
+async def delete_reservation(
+    reservation_id: UUID,
+    admin_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a reservation from database permanently (admin only)."""
+    reservation_service = ReservationService(db)
+    try:
+        await reservation_service.delete_reservation(reservation_id)
+        return {"message": "Reservation deleted successfully"}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
 
 
 # ============== Payments ==============

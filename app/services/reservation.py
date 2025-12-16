@@ -12,7 +12,7 @@ from app.models.room import Room, RoomStatus
 from app.models.addon import Addon, AddonPriceType
 from app.models.payment import Payment, PaymentMethod, PaymentStatus
 from app.models.promo import Promo, DiscountType
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.reservation import ReservationCreate, ReservationResponse, ReservationAddonResponse
 from app.services.room import RoomService
 from app.services.promo import PromoService
@@ -224,36 +224,162 @@ class ReservationService:
         await self.db.refresh(reservation)
         return reservation
     
+    async def update_reservation(
+        self,
+        reservation_id: UUID,
+        user_id: UUID,
+        update_data: dict,
+    ) -> ReservationResponse:
+        """Update a reservation. Admin only or owner."""
+        from app.schemas.reservation import ReservationUpdate
+        
+        reservation = await self.get_reservation_by_id(reservation_id)
+        if not reservation:
+            raise ValueError("Reservation not found")
+        
+        # Check permission: owner or admin
+        is_admin = False
+        if reservation.user_id != user_id:
+            user_query = select(User).where(User.id == user_id)
+            user_result = await self.db.execute(user_query)
+            user = user_result.scalar_one_or_none()
+            if not user or user.role != UserRole.ADMIN:
+                raise PermissionError("You don't have permission to update this reservation")
+            is_admin = True
+        
+        # Update fields
+        if "room_id" in update_data and update_data["room_id"] is not None:
+            # Verify room exists and is available
+            new_room = await self.room_service.get_room_by_id(update_data["room_id"])
+            if not new_room:
+                raise ValueError("Room not found")
+            reservation.room_id = update_data["room_id"]
+        
+        if "start_time" in update_data and update_data["start_time"] is not None:
+            reservation.start_time = update_data["start_time"]
+        
+        if "end_time" in update_data and update_data["end_time"] is not None:
+            reservation.end_time = update_data["end_time"]
+        
+        if "notes" in update_data:
+            reservation.notes = update_data["notes"]
+        
+        # Recalculate prices if time changed
+        if "start_time" in update_data or "end_time" in update_data or "room_id" in update_data:
+            duration = (reservation.end_time - reservation.start_time).total_seconds() / 3600
+            room = await self.room_service.get_room_by_id(reservation.room_id)
+            reservation.subtotal = room.base_price_per_hour * Decimal(str(duration))
+            
+            # Recalculate with addons
+            addon_total = sum(addon.subtotal for addon in reservation.addons)
+            reservation.total_amount = reservation.subtotal + addon_total - reservation.discount_amount
+        
+        # Handle addons update
+        if "addons" in update_data and update_data["addons"] is not None:
+            # Remove existing addons
+            for addon in reservation.addons:
+                await self.db.delete(addon)
+            await self.db.flush()
+            
+            # Add new addons
+            addon_total = Decimal("0")
+            for addon_data in update_data["addons"]:
+                addon = await self._get_addon(addon_data["addon_id"])
+                if not addon:
+                    raise ValueError(f"Addon {addon_data['addon_id']} not found")
+                
+                qty = addon_data.get("qty", 1)
+                price = addon.price_per_hour  # Use price from addon
+                duration = (reservation.end_time - reservation.start_time).total_seconds() / 3600
+                
+                if addon.price_type == AddonPriceType.PER_HOUR:
+                    subtotal = price * Decimal(str(duration)) * qty
+                else:
+                    subtotal = price * qty
+                
+                reservation_addon = ReservationAddon(
+                    reservation_id=reservation.id,
+                    addon_id=addon.id,
+                    qty=qty,
+                    price=price,
+                    subtotal=subtotal,
+                )
+                self.db.add(reservation_addon)
+                addon_total += subtotal
+            
+            reservation.total_amount = reservation.subtotal + addon_total - reservation.discount_amount
+        
+        await self.db.commit()
+        
+        # Reload reservation with all relationships
+        from sqlalchemy.orm import selectinload
+        query = select(Reservation).where(
+            Reservation.id == reservation_id
+        ).options(
+            selectinload(Reservation.user),
+            selectinload(Reservation.room),
+            selectinload(Reservation.addons).selectinload(ReservationAddon.addon),
+            selectinload(Reservation.payment),
+        )
+        result = await self.db.execute(query)
+        reservation = result.scalar_one()
+        
+        return await self._reservation_to_response(reservation)
+    
     async def cancel_reservation(
         self,
         reservation_id: UUID,
         user_id: UUID,
+        force: bool = False,
     ) -> None:
-        """Cancel a reservation."""
+        """Cancel a reservation (soft delete - change status to CANCELLED)."""
         reservation = await self.get_reservation_by_id(reservation_id)
         
         if not reservation:
             raise ValueError("Reservation not found")
         
         # Check if user owns this reservation or is admin
+        is_admin = False
         if reservation.user_id != user_id:
             # Check if user is admin
             user_query = select(User).where(User.id == user_id)
             user_result = await self.db.execute(user_query)
             user = user_result.scalar_one_or_none()
-            if not user or not user.is_admin:
+            if not user or user.role != UserRole.ADMIN:
                 raise PermissionError("You don't have permission to cancel this reservation")
+            is_admin = True
         
         # Only allow cancellation if not already completed or cancelled
+        # Admins with force=True can cancel already-cancelled reservations (idempotent)
         if reservation.status in [ReservationStatus.COMPLETED, ReservationStatus.CANCELLED]:
-            raise ValueError(f"Cannot cancel reservation with status: {reservation.status.value}")
+            if not (is_admin and force and reservation.status == ReservationStatus.CANCELLED):
+                raise ValueError(f"Cannot cancel reservation with status: {reservation.status.value}")
         
         reservation.status = ReservationStatus.CANCELLED
         
         # Also update payment status if exists
-        if reservation.payment:
+        if reservation.payment and reservation.payment.status != PaymentStatus.CANCELLED:
             reservation.payment.status = PaymentStatus.CANCELLED
         
+        await self.db.commit()
+    
+    async def delete_reservation(
+        self,
+        reservation_id: UUID,
+    ) -> None:
+        """Delete a reservation from database (hard delete). Admin only."""
+        reservation = await self.get_reservation_by_id(reservation_id)
+        
+        if not reservation:
+            raise ValueError("Reservation not found")
+        
+        # Manually delete payment first (if exists) to avoid foreign key constraint error
+        if reservation.payment:
+            await self.db.delete(reservation.payment)
+            await self.db.flush()
+        
+        # Delete the reservation (cascade will delete addons and other related records)
+        await self.db.delete(reservation)
         await self.db.commit()
     
     async def _get_addon(self, addon_id: UUID) -> Addon | None:

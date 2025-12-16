@@ -181,6 +181,57 @@ class FbOrderService:
         await self.db.refresh(order)
         return order
     
+    async def cancel_order(self, order_id: UUID) -> FbOrder:
+        """Cancel an F&B order (change status to CANCELLED and restore stock)."""
+        order = await self.get_order_by_id(order_id)
+        if not order:
+            raise ValueError("Order not found")
+        
+        if order.status == FbOrderStatus.CANCELLED:
+            raise ValueError("Order is already cancelled")
+        
+        if order.status == FbOrderStatus.COMPLETED:
+            raise ValueError("Cannot cancel a completed order")
+        
+        # Restore menu item stock
+        for item in order.items:
+            menu_item = await self._get_menu_item(item.menu_item_id)
+            if menu_item:
+                menu_item.stock += item.qty
+        
+        # Update status
+        order.status = FbOrderStatus.CANCELLED
+        await self.db.commit()
+        
+        # Reload with eager loading
+        query = select(FbOrder).where(
+            FbOrder.id == order_id
+        ).options(
+            selectinload(FbOrder.items).selectinload(FbOrderItem.menu_item),
+            selectinload(FbOrder.room),
+        )
+        result = await self.db.execute(query)
+        order = result.scalar_one()
+        
+        return order
+    
+    async def delete_order(self, order_id: UUID):
+        """Delete an F&B order (hard delete from database)."""
+        order = await self.get_order_by_id(order_id)
+        if not order:
+            raise ValueError("Order not found")
+        
+        # Restore stock if order was not completed or cancelled
+        if order.status not in [FbOrderStatus.COMPLETED, FbOrderStatus.CANCELLED]:
+            for item in order.items:
+                menu_item = await self._get_menu_item(item.menu_item_id)
+                if menu_item:
+                    menu_item.stock += item.qty
+        
+        # Delete order (items will cascade delete)
+        await self.db.delete(order)
+        await self.db.flush()
+    
     async def _get_menu_item(self, item_id: UUID) -> MenuItem | None:
         """Get menu item by ID."""
         query = select(MenuItem).where(MenuItem.id == item_id)

@@ -1,93 +1,131 @@
-# BIG GAMES Online Booking API
+# BIG GAMES Backend API
 
-A complete backend for PlayStation room rental and food ordering application built with FastAPI, SQLAlchemy 2.0, PostgreSQL with pgvector, and AI-powered room recommendations.
+Backend system for PlayStation room rental and food ordering platform. Built with FastAPI, PostgreSQL with pgvector, and AI-powered recommendations.
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+- [API Documentation](#api-documentation)
+- [Database Schema](#database-schema)
+- [Development](#development)
+- [Testing](#testing)
+- [Deployment](#deployment)
+
+---
 
 ## Features
 
-- **Room Booking**: Browse and book PlayStation rooms (VIP, PS Series, Regular, Simulator)
-- **F&B Orders**: Order food and beverages (no AI, linked to reservations)
-- **Manual Payment**: QRIS/Bank Transfer with admin verification
-- **AI Recommendations**: Personalized room suggestions using pgvector embeddings
-- **JWT Authentication**: Secure access with role-based permissions
+**Core Functionality**
+
+- Room booking system with real-time availability
+- Food & beverage ordering linked to reservations
+- Payment verification (QRIS/Bank Transfer)
+- AI-powered room recommendations
+- User reviews and ratings
+
+**Authentication & Authorization**
+
+- JWT-based authentication
+- Role-based access control (Admin, Finance, User)
+- Secure password hashing
+
+**AI Recommendations**
+
+- Personalized suggestions using pgvector embeddings
+- Hybrid scoring algorithm (similarity + popularity + ratings)
+- Cold start handling for new users
+
+---
 
 ## Tech Stack
 
-- **Python 3.11+**
-- **FastAPI 0.109.0** - Modern async web framework
-- **SQLAlchemy 2.0.25** - Async ORM
-- **Alembic 1.13.1** - Database migrations
-- **PostgreSQL 16** with **pgvector** - Vector similarity search
-- **Docker & Docker Compose** - Containerization
+| Component        | Technology               |
+| ---------------- | ------------------------ |
+| Framework        | FastAPI 0.109.0          |
+| Database         | PostgreSQL 16 + pgvector |
+| ORM              | SQLAlchemy 2.0 (async)   |
+| Migrations       | Alembic 1.13.1           |
+| Authentication   | JWT (python-jose)        |
+| Validation       | Pydantic v2              |
+| Containerization | Docker Compose           |
+
+---
 
 ## Quick Start
 
-### 1. Clone and Setup
+### Prerequisites
+
+- Docker and Docker Compose
+- Python 3.11+ (for local development)
+
+### Installation
+
+**1. Clone and Configure**
 
 ```bash
+git clone <repository-url>
 cd biggames_backend
 cp .env.example .env
 ```
 
-### 2. Start with Docker
+**2. Start Services**
 
 ```bash
-docker compose up -d
+docker-compose up -d
 ```
 
-This starts:
-
-- PostgreSQL with pgvector extension on port 5432
-- FastAPI app on port 8000
-
-### 3. Run Migrations
-
-```bash
-docker compose exec api alembic upgrade head
-```
-
-### 4. Seed Demo Data
-
-```bash
-docker compose exec api python scripts/seed_demo_data.py
-```
-
-### 5. Access API
+Services:
 
 - API: http://localhost:8000
-- Docs: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+- PostgreSQL: localhost:5432
+- API Docs: http://localhost:8000/docs
 
-## Environment Variables
+**3. Initialize Database**
 
-```env
-# Database
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/biggames
-
-# JWT
-JWT_SECRET_KEY=your-secret-key-here
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-REFRESH_TOKEN_EXPIRE_DAYS=7
-
-# OpenAI (optional, uses FakeEmbeddingProvider by default)
-OPENAI_API_KEY=sk-...
-
-# Payment (displayed to users)
-BANK_ACCOUNT_NAME=PT BIG GAMES INDONESIA
-BANK_ACCOUNT_NUMBER=1234567890
-BANK_NAME=BCA
-QRIS_IMAGE_URL=https://example.com/qris.png
+```bash
+docker-compose exec api alembic upgrade head
+docker-compose exec api python scripts/seed_demo_data.py
 ```
 
-## Demo Users
+**4. Verify Installation**
 
-| Email               | Password   | Role    |
-| ------------------- | ---------- | ------- |
-| admin@biggames.id   | admin123   | ADMIN   |
-| finance@biggames.id | finance123 | FINANCE |
-| andi@gmail.com      | user123    | USER    |
-| budi@gmail.com      | user123    | USER    |
-| citra@gmail.com     | user123    | USER    |
+```bash
+curl http://localhost:8000/health
+```
+
+---
+
+## API Documentation
+
+### Base URL
+
+- Local: `http://localhost:8000`
+- Production: `https://2d4ae8dc10a3.ngrok-free.app`
+
+### Interactive Documentation
+
+- Swagger UI: `/docs`
+- ReDoc: `/redoc`
+
+### Authentication
+
+All protected endpoints require Bearer token:
+
+```bash
+Authorization: Bearer <access_token>
+```
+
+### Demo Accounts
+
+| Email                | Password   | Role    |
+| -------------------- | ---------- | ------- |
+| admin@biggames.com   | admin123   | ADMIN   |
+| finance@biggames.com | finance123 | FINANCE |
+| user@example.com     | user123    | USER    |
 
 ---
 

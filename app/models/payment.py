@@ -22,6 +22,7 @@ class PaymentStatus(str, enum.Enum):
     WAITING_CONFIRMATION = "WAITING_CONFIRMATION"
     PAID = "PAID"
     REJECTED = "REJECTED"
+    CANCELLED = "CANCELLED"
 
 
 class Payment(Base):

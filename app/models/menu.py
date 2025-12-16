@@ -13,7 +13,7 @@ from app.db.session import Base
 class MenuCategory(str, enum.Enum):
     """Menu category."""
     FOOD = "FOOD"
-    DRINK = "DRINK"
+    BEVERAGE = "BEVERAGE"  # Changed from DRINK for consistency
     SNACK = "SNACK"
 
 

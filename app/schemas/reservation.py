@@ -67,3 +67,12 @@ class ReservationResponse(BaseModel):
 class ReservationStatusUpdate(BaseModel):
     """Schema for updating reservation status."""
     status: ReservationStatus
+
+
+class ReservationUpdate(BaseModel):
+    """Schema for updating a reservation."""
+    room_id: UUID | None = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    notes: str | None = None
+    addons: list[ReservationAddonCreate] | None = None

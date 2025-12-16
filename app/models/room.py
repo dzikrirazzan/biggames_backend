@@ -14,7 +14,7 @@ from app.db.session import Base
 class RoomCategory(str, enum.Enum):
     """Room categories."""
     VIP = "VIP"
-    REGULER = "REGULER"
+    REGULAR = "REGULAR"  # Changed from REGULER for consistency
     PS_SERIES = "PS_SERIES"
     SIMULATOR = "SIMULATOR"
 

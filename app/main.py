@@ -33,18 +33,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware
+# CORS middleware - Allow all origins for ngrok compatibility
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:3000",  # React/Next.js dev server
-        "http://localhost:8080",  # Vue dev server
-        "*",  # Allow all for development
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow all origins for development with ngrok
+    allow_credentials=False,  # Must be False when allow_origins is ["*"]
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Include routers
