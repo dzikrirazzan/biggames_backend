@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: biggames_db
+    environment:
+      POSTGRES_USER: biggames
+      POSTGRES_PASSWORD: biggames123
+      POSTGRES_DB: biggames_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U biggames -d biggames_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: biggames_api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://biggames:biggames123@db:5432/biggames_db
+      DATABASE_URL_SYNC: postgresql://biggames:biggames123@db:5432/biggames_db
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-super-secret-jwt-key-change-in-production}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-fake}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      QRIS_IMAGE_URL: ${QRIS_IMAGE_URL:-https://example.com/qris-biggames.png}
+      BANK_NAME: ${BANK_NAME:-BCA}
+      BANK_ACCOUNT_NUMBER: ${BANK_ACCOUNT_NUMBER:-1234567890}
+      BANK_ACCOUNT_NAME: ${BANK_ACCOUNT_NAME:-BIG GAMES Online Booking}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+volumes:
+  postgres_data:
