@@ -16,7 +16,9 @@ from app.models import *  # noqa: F401, F403
 config = context.config
 
 # Override sqlalchemy.url with the app's database URL (sync version for offline)
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL_SYNC)
+# Replace % with %% to avoid ConfigParser interpolation issues
+database_url = settings.DATABASE_URL_SYNC.replace('%', '%%')
+config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:
