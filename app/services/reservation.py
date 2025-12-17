@@ -221,8 +221,18 @@ class ReservationService:
         
         reservation.status = status
         await self.db.flush()
-        await self.db.refresh(reservation)
-        return reservation
+        
+        # Re-query with eager loading instead of refresh to avoid lazy loading issues
+        query = select(Reservation).where(
+            Reservation.id == reservation_id
+        ).options(
+            selectinload(Reservation.user),
+            selectinload(Reservation.room),
+            selectinload(Reservation.addons).selectinload(ReservationAddon.addon),
+            selectinload(Reservation.payment),
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
     
     async def update_reservation(
         self,
@@ -310,9 +320,9 @@ class ReservationService:
             reservation.total_amount = reservation.subtotal + addon_total - reservation.discount_amount
         
         await self.db.commit()
+        await self.db.flush()
         
-        # Reload reservation with all relationships
-        from sqlalchemy.orm import selectinload
+        # Reload reservation with all relationships using eager loading
         query = select(Reservation).where(
             Reservation.id == reservation_id
         ).options(
@@ -362,6 +372,7 @@ class ReservationService:
             reservation.payment.status = PaymentStatus.CANCELLED
         
         await self.db.commit()
+        await self.db.flush()
     
     async def delete_reservation(
         self,

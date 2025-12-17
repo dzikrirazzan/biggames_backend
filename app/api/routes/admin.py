@@ -80,7 +80,7 @@ async def update_reservation_status(
     return await reservation_service._reservation_to_response(reservation)
 
 
-@router.post("/reservations/{reservation_id}/cancel", status_code=status.HTTP_200_OK)
+@router.post("/reservations/{reservation_id}/cancel", response_model=ReservationResponse)
 async def cancel_reservation(
     reservation_id: UUID,
     admin_user: User = Depends(get_admin_user),
@@ -90,7 +90,9 @@ async def cancel_reservation(
     reservation_service = ReservationService(db)
     try:
         await reservation_service.cancel_reservation(reservation_id, admin_user.id, force=True)
-        return {"message": "Reservation cancelled successfully"}
+        # Return updated reservation data so frontend can update UI
+        reservation = await reservation_service.get_reservation_by_id(reservation_id)
+        return await reservation_service._reservation_to_response(reservation)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
