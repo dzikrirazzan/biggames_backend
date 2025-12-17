@@ -57,6 +57,9 @@ async def run_async_migrations() -> None:
     connectable = create_async_engine(
         database_url,
         poolclass=pool.NullPool,
+        connect_args={
+            "statement_cache_size": 0,  # Required for pgbouncer/Supabase pooler
+        },
     )
 
     async with connectable.connect() as connection:

@@ -11,11 +11,14 @@ database_url = settings.DATABASE_URL
 if database_url.startswith("postgresql://"):
     database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-# Create async engine
+# Create async engine with pgbouncer compatibility
 engine = create_async_engine(
     database_url,
     echo=settings.DEBUG,
     future=True,
+    connect_args={
+        "statement_cache_size": 0,  # Required for pgbouncer/Supabase pooler
+    },
 )
 
 # Create async session factory
