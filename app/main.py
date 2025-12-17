@@ -1,7 +1,8 @@
 """Main FastAPI application."""
 from contextlib import asynccontextmanager
+import time
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
@@ -32,6 +33,21 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# Performance monitoring middleware
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    """Add response time header for monitoring."""
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = str(round(process_time * 1000, 2))  # ms
+    
+    # Log slow requests (> 1 second)
+    if process_time > 1.0:
+        print(f"⚠️  SLOW REQUEST: {request.method} {request.url.path} took {process_time:.2f}s")
+    
+    return response
 
 # CORS middleware - Allow all origins for ngrok compatibility
 app.add_middleware(
