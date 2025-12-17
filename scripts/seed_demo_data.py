@@ -411,7 +411,18 @@ async def main():
     print("BIG GAMES Online Booking - Database Seeder")
     print("=" * 60 + "\n")
     
-    engine = create_async_engine(settings.DATABASE_URL, echo=False)
+    # Fix DATABASE_URL untuk async driver (same as app/db/session.py)
+    database_url = settings.DATABASE_URL
+    if database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    
+    engine = create_async_engine(
+        database_url,
+        echo=False,
+        connect_args={
+            "statement_cache_size": 0,  # Required for pgbouncer/Supabase pooler
+        },
+    )
     async_session = async_sessionmaker(engine, expire_on_commit=False)
     
     async with async_session() as db:
