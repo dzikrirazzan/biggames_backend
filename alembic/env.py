@@ -49,8 +49,13 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     """Run migrations in 'online' mode with async engine."""
+    # Fix DATABASE_URL untuk async driver
+    database_url = settings.DATABASE_URL
+    if database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    
     connectable = create_async_engine(
-        settings.DATABASE_URL,
+        database_url,
         poolclass=pool.NullPool,
     )
 
