@@ -905,6 +905,27 @@ When a user has fewer than 3 events:
 
 ---
 
+## Deployment
+
+### Deploy to Heroku via GitHub
+
+Tutorial lengkap untuk deploy menggunakan GitHub automatic deployment:
+
+**[Heroku Deployment Guide](docs/DEPLOY_HEROKU_GITHUB.md)**
+
+Quick steps:
+
+1. Create Heroku app
+2. Add Heroku Postgres addon
+3. Connect GitHub repository
+4. Enable automatic deploys
+5. Configure environment variables
+6. Deploy!
+
+Setiap push ke branch `main` akan otomatis trigger deployment.
+
+---
+
 ## Project Structure
 
 ```
@@ -920,6 +941,8 @@ biggames_backend/
 │   ├── schemas/             # Pydantic schemas
 │   ├── services/            # Business logic
 │   └── main.py              # FastAPI app
+├── docs/
+│   └── DEPLOY_HEROKU_GITHUB.md  # Deployment guide
 ├── scripts/
 │   ├── seed_demo_data.py    # Demo data seeder
 │   └── evaluate_recommender.py
@@ -930,6 +953,8 @@ biggames_backend/
 │   └── test_ai.py
 ├── docker-compose.yml
 ├── Dockerfile
+├── Procfile                  # Heroku startup
+├── runtime.txt               # Python version
 ├── requirements.txt
 └── README.md
 ```

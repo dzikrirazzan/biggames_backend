@@ -17,9 +17,10 @@ python-jose[cryptography]==3.3.0
 passlib==1.7.4
 bcrypt==4.0.1
 
-# AI with Hugging Face
+# AI with Hugging Face (CPU-only untuk Heroku)
 numpy==1.26.3
-torch==2.2.0
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.0+cpu
 transformers==4.37.2
 sentence-transformers==2.5.1
 
