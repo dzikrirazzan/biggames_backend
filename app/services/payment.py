@@ -54,8 +54,13 @@ class PaymentService:
         
         payment.proof_url = proof_url
         await self.db.flush()
-        await self.db.refresh(payment)
-        return payment
+        
+        # Re-query with eager loading to avoid lazy loading issues
+        query = select(Payment).where(Payment.id == payment.id).options(
+            selectinload(Payment.reservation)
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
     
     async def get_all_payments(self) -> list[PaymentResponse]:
         """Get all payments (admin)."""
@@ -100,8 +105,13 @@ class PaymentService:
             reservation.status = ReservationStatus.CONFIRMED
         
         await self.db.flush()
-        await self.db.refresh(payment)
-        return payment
+        
+        # Re-query with eager loading to avoid lazy loading issues
+        query = select(Payment).where(Payment.id == payment_id).options(
+            selectinload(Payment.reservation)
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
     
     async def reject_payment(
         self,
@@ -129,5 +139,10 @@ class PaymentService:
             reservation.status = ReservationStatus.CANCELLED
         
         await self.db.flush()
-        await self.db.refresh(payment)
-        return payment
+        
+        # Re-query with eager loading to avoid lazy loading issues
+        query = select(Payment).where(Payment.id == payment_id).options(
+            selectinload(Payment.reservation)
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
