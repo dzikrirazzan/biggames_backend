@@ -1,7 +1,7 @@
 """Add performance indexes
 
 Revision ID: 003_add_indexes
-Revises: c2d4e5f6g789_fix_console_type_switch2_to_nintendo_switch
+Revises: c2d4e5f6g789
 Create Date: 2025-12-17 15:40:00.000000
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '003_add_indexes'
-down_revision = 'c2d4e5f6g789_fix_console_type_switch2_to_nintendo_switch'
+down_revision = 'c2d4e5f6g789'
 branch_labels = None
 depends_on = None
 
