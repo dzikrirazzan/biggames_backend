@@ -178,8 +178,16 @@ class FbOrderService:
         
         order.status = status
         await self.db.flush()
-        await self.db.refresh(order)
-        return order
+        
+        # Re-query with eager loading instead of refresh to avoid lazy loading issues
+        query = select(FbOrder).where(
+            FbOrder.id == order_id
+        ).options(
+            selectinload(FbOrder.items).selectinload(FbOrderItem.menu_item),
+            selectinload(FbOrder.room),
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
     
     async def cancel_order(self, order_id: UUID) -> FbOrder:
         """Cancel an F&B order (change status to CANCELLED and restore stock)."""
